@@ -11,6 +11,7 @@ import { app } from '../../../firebase';
 import Navbar from '../Navbar/Navbar';
 import Footer from '../footer/Footer';
 import { useParams } from 'react-router-dom';
+import emailjs from 'emailjs-com';
 
 const CreateApplicant = () => {
   const [firstName, setFirstName] = useState('');
@@ -19,7 +20,7 @@ const CreateApplicant = () => {
   const [email, setEmail] = useState('');
   const [jobType, setJobType] = useState('');
   const [jobTypes, setJobTypes] = useState([]);
-  const [cvFile, setCvFile] = useState(null); // Store PDF file instead of image
+  const [cvFile, setCvFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ const CreateApplicant = () => {
     }
 
     if (!cvFile) {
-      errors.cvFile = 'PDF CV upload is required'; // Updated error message for CV
+      errors.cvFile = 'PDF CV upload is required';
       isValid = false;
     } else if (!cvFile.type === 'application/pdf') {
       errors.cvFile = 'Only PDF files are allowed';
@@ -116,6 +117,22 @@ const CreateApplicant = () => {
       return;
     }
 
+    Swal.fire({
+      title: 'Confirm Submission',
+      text: 'Are you sure you want to submit your application?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, submit it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        proceedWithSave();
+      }
+    });
+  };
+
+  const proceedWithSave = async () => {
     setLoading(true);
 
     try {
@@ -158,50 +175,91 @@ const CreateApplicant = () => {
 
   const saveApplicant = async (fileUrl) => {
     const data = {
-        FirstName: firstName,
-        LastName: lastName,
-        Number: number,
-        Email: email,
-        JobType: jobType,
-        image: fileUrl,  // Saving CV URL instead of image
-        cusID: cusID,
+      FirstName: firstName,
+      LastName: lastName,
+      Number: number,
+      Email: email,
+      JobType: jobType,
+      image: fileUrl,  // Saving CV URL instead of image
+      cusID: cusID,
     };
 
     try {
-        await axios.post('http://localhost:8077/applicant', data);
-        Swal.fire({
-            icon: 'success',
-            title: 'Applicant created successfully',
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 1500,
-            timerProgressBar: true,
-        });
+      await axios.post('http://localhost:8077/applicant', data);
+      Swal.fire({
+        icon: 'success',
+        title: 'Applicant created successfully',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1500,
+        timerProgressBar: true,
+      });
 
-        setTimeout(() => {
-            setLoading(false);
-            navigate(`/applicant/${cusID}`);
-        }, 1500);
+      // **Second SweetAlert before sending email**
+      Swal.fire({
+        title: 'Send Confirmation Email?',
+        text: `Do you want to send a confirmation email to ${email}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, send email!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          sendConfirmationEmail();
+        } else {
+          navigate(`/applicant/${cusID}`);
+        }
+      });
     } catch (error) {
-        setLoading(false);
-        Swal.fire({
-            icon: 'error',
-            title: 'Applicant submission failed',
-            text: 'Please check the provided details or try again later',
-        });
-        console.error(error);
-        console.log(cusID);
+      setLoading(false);
+      Swal.fire({
+        icon: 'error',
+        title: 'Applicant submission failed',
+        text: 'Please check the provided details or try again later',
+      });
+      console.error(error);
+      console.log(cusID);
     }
   };
 
+  const sendConfirmationEmail = () => {
+    emailjs.send(
+      'service_3p901v6',          // Replace with your EmailJS service ID
+      'template_cwl7ahv',         // Replace with your EmailJS template ID
+      {
+        to_name: `${firstName} ${lastName}`,  // Full name of the applicant
+        to_email: email,                      // Applicant's email address
+        job_type: jobType,                    // Selected job type
+        message: `Dear ${firstName} ${lastName}, your application for the ${jobType} position has been submitted successfully.` // Message to be included in the email
+      },
+      '-r5ctVwHjzozvGIfg'         // Replace with your EmailJS user ID
+    ).then((result) => {
+      console.log('Email sent successfully:', result.text);
+      Swal.fire({
+        icon: 'success',
+        title: 'Email sent successfully',
+        showConfirmButton: false,
+        timer: 1500,
+      });
+      navigate(`/applicant/${cusID}`);
+    }).catch((error) => {
+      console.error('Error sending email:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Email Error',
+        text: 'Error sending confirmation email. Please try again later.',
+      });
+    });
+  };
+
+
   return (
     <div className=''>
-      <Navbar/>
+      <Navbar />
       {loading && <Spinner />}
       <div style={styles.container}>
-       
-        
         <img
           src={img1}
           style={styles.image}
@@ -271,7 +329,7 @@ const CreateApplicant = () => {
             <input
               type="file"
               onChange={handleFileChange}
-              accept="application/pdf"  // Only accept PDF files
+              accept="application/pdf"
               className="p-0 border border-gray-600 rounded-lg"
               required
             />
@@ -288,11 +346,10 @@ const CreateApplicant = () => {
           </Link>
         </form>
       </div>
-      <Footer/>
+      <Footer />
     </div>
   );
 };
-
 const styles = {
   container: {
     display: 'flex',
@@ -356,11 +413,11 @@ const styles = {
     color: "#fff",
     fontSize: "16px",
     width: "auto",
-   
+
     cursor: "pointer",
     textDecoration: "none",
   },
- 
+
   error: {
     color: 'red',
     fontSize: '0.875rem',
