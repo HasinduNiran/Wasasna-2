@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-
+import emailjs from "emailjs-com";
 import img1 from "../../images/bg02.jpg";
 import BackButton from "../../components/BackButton";
 import Navbar from "../Navbar/Navbar";
@@ -14,6 +14,7 @@ function CreateServiceHistory() {
   const [services, setServices] = useState([]);
   const [promotion, setPackages] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [Email, setEmail] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [service, setService] = useState({
     cusID: "",
@@ -22,6 +23,7 @@ function CreateServiceHistory() {
     Service_History: "",
     Service_Date: "",
     Milage: "",
+    Email: "",
     Package: "",
     selectedServices: [],
     nextService: "",
@@ -65,7 +67,7 @@ function CreateServiceHistory() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-  
+
     if (type === "checkbox") {
       setService((prev) => ({
         ...prev,
@@ -75,11 +77,10 @@ function CreateServiceHistory() {
       }));
     } else {
       setService((prev) => ({ ...prev, [name]: value }));
-  
+
       if (name === "Milage") {
         const milage = parseInt(value, 10);
-  
-        // Validate if the input is not a valid integer or is less than or equal to 0
+
         if (isNaN(milage) || milage <= 0) {
           Swal.fire({
             position: "center",
@@ -88,7 +89,6 @@ function CreateServiceHistory() {
             showConfirmButton: true,
           });
         } else {
-          // Set next service to 5000 miles after the current mileage
           setService((prev) => ({ ...prev, nextService: milage + 5000 }));
         }
       }
@@ -98,14 +98,14 @@ function CreateServiceHistory() {
   const handleVehicleSelect = (e) => {
     const selectedVehicleId = e.target.value;
     const selectedVehicle = vehicles.find(
-      (vehicle) => vehicle.Register_Number == selectedVehicleId
+      (vehicle) => vehicle.Register_Number === selectedVehicleId
     );
 
     if (selectedVehicle) {
       setService((prev) => ({
         ...prev,
         cusID: selectedVehicle.cusID,
-        Vehicle_Number: selectedVehicleId, // Update this according to your state key
+        Vehicle_Number: selectedVehicleId,
         Customer_Name: selectedVehicle.Customer_Name,
         Customer_Email: selectedVehicle.Email,
         Milage: selectedVehicle.Milage,
@@ -121,34 +121,91 @@ function CreateServiceHistory() {
     setService((prev) => ({ ...prev, Package: selectedPackage }));
   };
 
+  const sendEmailToCustomer = () => {
+    const emailConfig = {
+      serviceID: "service_3p901v6",
+      templateID: "template_cwl7ahv",
+      userID: "-r5ctVwHjzozvGIfg",
+    };
+
+    emailjs
+    .send(
+      emailConfig.serviceID,
+      emailConfig.templateID,
+      {
+        to_email: service.Email,
+        message: `Dear ${service.cusID}, 
+  
+        Thank you for using Wasana Service Management System.
+        
+        Vehicle Number: ${service.Vehicle_Number}
+        Current Mileage: ${service.Milage} miles
+        Next Service Due at: ${service.nextService} miles
+  
+        If you have any questions or need assistance, feel free to reach out to us.
+  
+        Best regards,
+        Wasana Service Management Team`,
+      },
+      emailConfig.userID
+    )
+  
+      .then(() => {
+        Swal.fire({
+          icon: "success",
+          title: "Email Sent Successfully!",
+        });
+      })
+      .catch((error) => {
+        Swal.fire({
+          icon: "error",
+          title: "Failed to send email.",
+          text: error.message,
+        });
+      });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // Check if at least one include is selected
     if (service.selectedServices.length === 0 && !service.Package) {
-        Swal.fire({
-            position: "center",
-            icon: "warning",
-            title: "Please select at least one service or a package.",
-            showConfirmButton: true,
-        });
-        setLoading(false); // Stop the loading indicator
-        return; // Prevent submission
+      Swal.fire({
+        position: "center",
+        icon: "warning",
+        title: "Please select at least one service or a package.",
+        showConfirmButton: true,
+      });
+      setLoading(false);
+      return;
     }
 
     axios
       .post("http://localhost:8077/ServiceHistory", service)
       .then((response) => {
-        console.log("Service history created:", response.data);
         navigate("/ServiceHistory");
+        Swal.fire({
+          icon: "success",
+          title: "Service Created Successfully!",
+          html: `Vehicle Number: ${service.Vehicle_Number}<br>
+                Next Service: ${service.nextService}<br>
+                Customer Email: ${service.Email}<br><br>
+                Send Email to Customer?`,
+          showCancelButton: true,
+          confirmButtonText: "Yes, Send Email",
+          cancelButtonText: "No, Close",
+        }).then((result) => {
+          if (result.isConfirmed) {
+            sendEmailToCustomer();
+          }
+        });
       })
       .catch((error) => {
         console.error("Error creating service history:", error);
         setError("Error creating service history.");
         setLoading(false);
       });
-};
+  };
 
   return (
     <div>
@@ -162,22 +219,20 @@ function CreateServiceHistory() {
           <h2 style={styles.title}>Add Service History</h2>
 
           <label>
-            <label>
-              <select
-                name="Vehicle_Number"
-                value={service.Vehicle_Number}
-                onChange={handleVehicleSelect}
-                required
-                style={styles.input}
-              >
-                <option value="">Select Vehicle Number</option>
-                {vehicles.map((vehicle) => (
-                  <option key={vehicle._id} value={vehicle.Register_Number}>
-                    {vehicle.Register_Number}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <select
+              name="Vehicle_Number"
+              value={service.Vehicle_Number}
+              onChange={handleVehicleSelect}
+              required
+              style={styles.input}
+            >
+              <option value="">Select Vehicle Number</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle._id} value={vehicle.Register_Number}>
+                  {vehicle.Register_Number}
+                </option>
+              ))}
+            </select>
           </label>
 
           <div style={styles.flex}>
@@ -191,6 +246,19 @@ function CreateServiceHistory() {
                 required
                 style={styles.input}
                 readOnly
+              />
+            </label>
+
+            <label>
+              <input
+                type="text"
+                name="Email"
+                placeholder="Email"
+                value={service.Email}
+                onChange={handleChange}
+                required
+                style={styles.input}
+               
               />
             </label>
 
@@ -211,6 +279,7 @@ function CreateServiceHistory() {
               </select>
             </label>
           </div>
+
           <div style={styles.flex}>
             <label>
               <input
@@ -230,8 +299,8 @@ function CreateServiceHistory() {
                 value={service.Service_Date}
                 onChange={handleChange}
                 required
-                min={new Date().toISOString().split("T")[0]} // Set min date to today
-                max={new Date().toISOString().split("T")[0]} // Set max date to today
+                min={new Date().toISOString().split("T")[0]}
+                max={new Date().toISOString().split("T")[0]}
                 style={styles.input}
               />
             </label>
@@ -275,6 +344,7 @@ function CreateServiceHistory() {
               />
             </label>
           </div>
+
           <div style={{ marginTop: "20px" }}>
             <label style={{ fontSize: "18px", marginBottom: "10px" }}>
               Includes:

@@ -28,6 +28,10 @@ const serviceSchema = mongoose.Schema({
         type: Number, // Changed to Number type for better representation
         required: true,
     },
+    Email: {
+        type: String, // Changed to Email type for better representation
+        required: true,
+    },
     Package: {type:String}
     , // Removed 'required: true' since it's optional
      selectedServices: {

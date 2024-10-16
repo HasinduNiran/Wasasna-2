@@ -11,6 +11,7 @@ router.post('/', async (request, response) => {
         // Create a new service history entry
         const newServiceHistory = new serviceHistory({
             cusID: request.body.cusID,
+            Email: request.body.Email,
             Allocated_Employee: request.body.Allocated_Employee,
             Vehicle_Number: request.body.Vehicle_Number,
             Milage: request.body.Milage,
