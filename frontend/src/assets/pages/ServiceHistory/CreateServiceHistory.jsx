@@ -13,9 +13,11 @@ function CreateServiceHistory() {
   const [employees, setEmployees] = useState([]);
   const [services, setServices] = useState([]);
   const [promotion, setPackages] = useState([]);
-  const [bookings, setBookings] = useState([]);
-  const [Email, setEmail] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [customers, setCustomers] = useState([]); // Store customer data
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
   const [service, setService] = useState({
     cusID: "",
     Allocated_Employee: "",
@@ -28,8 +30,6 @@ function CreateServiceHistory() {
     selectedServices: [],
     nextService: "",
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,21 +39,21 @@ function CreateServiceHistory() {
           promotionsResponse,
           employeesResponse,
           servicesResponse,
-          bookingsResponse,
           vehicleResponse,
+          customersResponse,
         ] = await Promise.all([
           axios.get("http://localhost:8077/Promotion"),
           axios.get("http://localhost:8077/Employee"),
           axios.get("http://localhost:8077/service"),
-          axios.get("http://localhost:8077/Booking"),
           axios.get("http://localhost:8077/Vehicle"),
+          axios.get("http://localhost:8077/Customer"), // Fetch customers data
         ]);
 
         setPackages(promotionsResponse.data);
         setEmployees(employeesResponse.data.data);
         setServices(servicesResponse.data.data);
-        setBookings(bookingsResponse.data);
         setVehicles(vehicleResponse.data.data);
+        setCustomers(customersResponse.data); // Store customers data
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Failed to fetch data.");
@@ -64,6 +64,31 @@ function CreateServiceHistory() {
 
     fetchData();
   }, []);
+
+  const handleCusIDChange = (e) => {
+    const cusID = e.target.value;
+
+    // Set the cusID in the service state
+    setService((prev) => ({ ...prev, cusID }));
+
+    // Find the customer by cusID from the customers array
+    const selectedCustomer = customers.find(customer => customer.cusID === cusID);
+    
+    if (selectedCustomer) {
+      // If the customer exists, update the email field
+      setService((prev) => ({
+        ...prev,
+        Email: selectedCustomer.Email,
+      }));
+    } else {
+      // Clear the email field if no customer is found
+      setService((prev) => ({
+        ...prev,
+        Email: "",
+      }));
+      console.error("Customer with this ID not found.");
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -106,13 +131,20 @@ function CreateServiceHistory() {
         ...prev,
         cusID: selectedVehicle.cusID,
         Vehicle_Number: selectedVehicleId,
-        Customer_Name: selectedVehicle.Customer_Name,
-        Customer_Email: selectedVehicle.Email,
         Milage: selectedVehicle.Milage,
         Package: selectedVehicle.selectedPackage,
         selectedServices: selectedVehicle.selectedServices || [],
         nextService: parseInt(selectedVehicle.Milage, 10) + 5000,
       }));
+
+      // Find customer by cusID and update the email field
+      const selectedCustomer = customers.find(customer => customer.cusID === selectedVehicle.cusID);
+      if (selectedCustomer) {
+        setService((prev) => ({
+          ...prev,
+          Email: selectedCustomer.email,
+        }));
+      }
     }
   };
 
@@ -129,27 +161,26 @@ function CreateServiceHistory() {
     };
 
     emailjs
-    .send(
-      emailConfig.serviceID,
-      emailConfig.templateID,
-      {
-        to_email: service.Email,
-        message: `Dear ${service.cusID}, 
+      .send(
+        emailConfig.serviceID,
+        emailConfig.templateID,
+        {
+          to_email: service.Email,
+          message: `Dear Customer with ID ${service.cusID}, 
   
-        Thank you for using Wasana Service Management System.
-        
-        Vehicle Number: ${service.Vehicle_Number}
-        Current Mileage: ${service.Milage} miles
-        Next Service Due at: ${service.nextService} miles
+          Thank you for using Wasana Service Management System.
+          
+          Vehicle Number: ${service.Vehicle_Number}
+          Current Mileage: ${service.Milage} miles
+          Next Service Due at: ${service.nextService} miles
   
-        If you have any questions or need assistance, feel free to reach out to us.
+          If you have any questions or need assistance, feel free to reach out to us.
   
-        Best regards,
-        Wasana Service Management Team`,
-      },
-      emailConfig.userID
-    )
-  
+          Best regards,
+          Wasana Service Management Team`,
+        },
+        emailConfig.userID
+      )
       .then(() => {
         Swal.fire({
           icon: "success",
@@ -239,13 +270,12 @@ function CreateServiceHistory() {
             <label>
               <input
                 type="text"
-                name="Customer ID"
+                name="cusID"
                 placeholder="CusID"
                 value={service.cusID}
-                onChange={handleChange}
+                onChange={handleCusIDChange}
                 required
                 style={styles.input}
-                readOnly
               />
             </label>
 
@@ -258,7 +288,7 @@ function CreateServiceHistory() {
                 onChange={handleChange}
                 required
                 style={styles.input}
-               
+                readOnly // Email should be read-only as it's fetched
               />
             </label>
 
