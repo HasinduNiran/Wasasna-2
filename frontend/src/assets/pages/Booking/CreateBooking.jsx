@@ -6,9 +6,17 @@ import Swal from "sweetalert2";
 import Navbar1 from "../Navbar/NavBar1";
 import Footer from "../footer/Footer";
 
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
+
 const CreateBooking = () => {
   const navigate = useNavigate();
   const { cusID } = useParams();
+  const [disabledDates, setDisabledDates] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [pastBooks, setPastBooks] = useState([]);
   const [booking, setBooking] = useState({
     Booking_Date: "",
     Customer_Name: "",
@@ -30,13 +38,24 @@ const CreateBooking = () => {
     const fetchPromotions = async () => {
       try {
         const response = await axios.get("http://localhost:8077/Promotion");
+        const response2 = await axios.get("http://localhost:8077/Booking");
+
         setPackages(response.data); // Assuming promotion data contains packages
-        console.log(response.selectedServices);
+        setPastBooks(response2.data);
+
+        const bookedDates = response2.data.reduce((acc, bk) => {
+          const date = dayjs(bk.Booking_Date).format("YYYY-MM-DD");
+          acc[date] = acc[date] ? acc[date] + 1 : 1;
+          return acc;
+        }, {});
+
+        setDisabledDates(bookedDates);
       } catch (error) {
-        setError("Failed to fetch promotions.");
-        console.error("Error fetching promotions", error);
+        setError("Failed to fetch promotions or bookings.");
+        console.error("Error fetching promotions or bookings", error);
       }
     };
+
     fetchPromotions();
   }, []);
 
@@ -84,13 +103,13 @@ const CreateBooking = () => {
       Vehicle_Number,
       Email,
     } = booking;
-  
+
     const today = new Date().toISOString().split("T")[0];
     const vehicleNumberPattern = /^[A-Z]{2,3}-\d{4}$/;
     const customerNamePattern = /^[A-Za-z\s]+$/;
     const contactNumberPattern = /^0\d{9}$/;
     const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  
+
     if (Booking_Date < today) {
       Swal.fire(
         "Error",
@@ -99,7 +118,7 @@ const CreateBooking = () => {
       );
       return false;
     }
-  
+
     if (!customerNamePattern.test(Customer_Name)) {
       Swal.fire(
         "Error",
@@ -108,7 +127,7 @@ const CreateBooking = () => {
       );
       return false;
     }
-  
+
     if (!contactNumberPattern.test(Contact_Number)) {
       Swal.fire(
         "Error",
@@ -117,7 +136,7 @@ const CreateBooking = () => {
       );
       return false;
     }
-  
+
     if (!vehicleNumberPattern.test(Vehicle_Number)) {
       Swal.fire(
         "Error",
@@ -126,19 +145,14 @@ const CreateBooking = () => {
       );
       return false;
     }
-  
+
     if (!emailPattern.test(Email)) {
-      Swal.fire(
-        "Error",
-        "Please enter a valid email address.",
-        "error"
-      );
+      Swal.fire("Error", "Please enter a valid email address.", "error");
       return false;
     }
-  
+
     return true;
   };
-  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -148,6 +162,7 @@ const CreateBooking = () => {
     try {
       const requestBody = {
         ...booking,
+        Booking_Date: selectedDate ? selectedDate.format("YYYY-MM-DD") : "",
         selectedServices,
       };
       await axios.post("http://localhost:8077/Booking", requestBody);
@@ -180,6 +195,11 @@ const CreateBooking = () => {
       console.error("There was an error fetching data!", error);
       Swal.fire("Error", "Failed to fetch data. Please try again.", "error");
     }
+  };
+
+  const shouldDisableDate = (date) => {
+    const formattedDate = dayjs(date).format("YYYY-MM-DD");
+    return disabledDates[formattedDate] >= 4; // Disable the date if it has 4 or more bookings
   };
 
   const styles = {
@@ -265,16 +285,23 @@ const CreateBooking = () => {
         <form onSubmit={handleSubmit} style={styles.form}>
           <h2 style={styles.title}>Create Booking</h2>
           <div style={styles.flex}>
-            <input
-              type="date"
-              name="Booking_Date"
-              placeholder="Booking Date"
-              value={booking.Booking_Date}
-              onChange={handleChange}
-              min={new Date().toISOString().split("T")[0]}
-              required
-              style={styles.input}
-            />
+            <div className="rounded-lg">
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  value={selectedDate}
+                  onChange={setSelectedDate}
+                  shouldDisableDate={shouldDisableDate}
+                  disablePast
+                  sx={{
+                    backgroundColor: "#333",
+                    borderRadius: "10px",
+                    marginTop: "20px",
+                    border: "1px solid rgba(105, 105, 105, 0.397)",
+                  }}
+                />
+              </LocalizationProvider>
+            </div>
+
             <input
               type="text"
               name="Customer_Name"
