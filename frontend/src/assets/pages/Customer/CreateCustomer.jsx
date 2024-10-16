@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from 'react-router-dom';
-import Logo from '../../images/logo.png'
+import Logo from '../../images/logo.png';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { app } from '../../../firebase'; // assuming you initialized Firebase in this file
 import Swal from 'sweetalert2';
+import emailjs from 'emailjs-com'; 
 
 const CreateCustomer = () => {
     const [firstName, setFirstName] = useState('');
@@ -22,6 +23,30 @@ const CreateCustomer = () => {
 
     // Initialize Firebase storage
     const storage = getStorage(app);
+
+    const sendEmailToCustomer = (customerEmail, customerPassword) => { 
+        const emailConfig = {
+            serviceID: 'service_p1zv9rh',
+            templateID: 'template_pua7ayd',
+            userID: 'v53cNBlrti0pL_RxD'
+        };
+
+        emailjs.send(
+            emailConfig.serviceID,
+            emailConfig.templateID,
+            {
+                to_email: email,  // Use customerEmail passed as a parameter
+                message: `Dear customer,\n\nYour account has been successfully created with us.\n\nYour Username is: ${cusID}\nYour Password is: ${password}\n\n\nBest regards,\nWasana Auto Service`
+            },
+            emailConfig.userID
+        )
+        .then((response) => {
+            console.log('Email sent successfully!', response);
+        })
+        .catch((error) => {
+            console.error('Error sending email:', error);
+        });
+    };
 
     const validateInputs = () => {
         const namePattern = /^[a-zA-Z]+$/;
@@ -100,13 +125,43 @@ const CreateCustomer = () => {
                     };
 
                     // Send a POST request to create a new customer
-                    await axios.post('http://localhost:8077/Customer', data);
-
-                    setLoading(false);
-                    navigate('/cLogin'); // Redirect to customer page after successful creation
-                } catch (error) {
-                    console.error('Error:', error);
-                    Swal.fire('Creation Failed', 'Failed to create customer.', 'error');
+                    axios.post('http://localhost:8077/customer', data)
+                    .then(() => {
+                        setLoading(false);
+                        // Show success SweetAlert
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: `Customer account created successfully for ${email}. Your Username is: ${cusID} and Password: ${password}`,
+                            showCancelButton: true,
+                            confirmButtonText: 'Send Account details to me',
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                sendEmailToCustomer(email, password); // Call sendEmailToCustomer function with the email address and password
+                            }
+                            // After user acknowledges the success, navigate away
+                            navigate('/');
+                        });
+                    })
+                    .catch((error) => {
+                        setLoading(false);
+                        if (error.response && error.response.data) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                text: 'Username or email is already in use. It should be unique!',
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                text: 'An error occurred. Please try again later.',
+                            });
+                        }
+                        console.log(error);
+                    });
+                } catch (err) {
+                    console.error('Error getting download URL:', err);
                     setLoading(false);
                 }
             }
@@ -117,11 +172,11 @@ const CreateCustomer = () => {
         <div className="font-[sans-serif] max-w-4xl flex items-center mx-auto md:h-screen p-4">
             <div className="grid bg-white md:grid-cols-3 items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.3)] rounded-xl overflow-hidden">
                 <div className="max-md:order-1 flex flex-col justify-center space-y-16 max-md:mt-16 min-h-full bg-gradient-to-r from-red-500 to-red-800 lg:px-8 px-4 py-4">
-                  <img 
-                  src={Logo} 
-                   alt="logo" 
-                    style={{ width: '60px', height: '60px', marginLeft : '37%',marginTop:'-60%' }} 
-                     />
+                    <img 
+                        src={Logo} 
+                        alt="logo" 
+                        style={{ width: '60px', height: '60px', marginLeft : '37%', marginTop: '-60%' }} 
+                    />
                     <div>
                         <h4 className="text-white text-lg font-semibold">Create Your Account</h4>
                         <p className="text-[13px] text-gray-300 mt-3 leading-relaxed">Welcome to our registration page! Get started by creating your account.</p>
@@ -249,30 +304,31 @@ const CreateCustomer = () => {
                                 required
                             />
                         </div>
+
+                        {/* Image Upload */}
+                        <div>
+                            <label className="block text-sm font-bold mb-2" htmlFor="image">Upload Image</label>
+                            <input
+                                type="file"
+                                id="image"
+                                onChange={(e) => setImage(e.target.files[0])}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-red-500"
+                                required
+                            />
+                        </div>
                     </div>
 
-                    <div className="mb-6">
-                        <label className="block text-sm font-bold mb-2">Profile Picture</label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => setImage(e.target.files[0])}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md outline-red-500"
-                            
-                        />
-                    </div>
+                    {/* Submit Button */}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className={`w-full px-4 py-2 font-semibold text-white ${loading ? 'bg-red-400' : 'bg-red-600'} hover:bg-red-700 rounded-md focus:outline-none`}
+                    >
+                        {loading ? 'Creating account...' : 'Create Account'}
+                    </button>
 
-                    <div className="mb-6">
-                        <button
-                            type="submit"
-                            className={`w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-800 transition duration-300 ${loading && 'cursor-not-allowed'}`}
-                            disabled={loading}
-                        >
-                            {loading ? 'Creating...' : 'Create Account'}
-                        </button>
-                    </div>
-
-                    {error && <div className="text-red-600 text-sm mb-4">{error}</div>}
+                    {/* Display error message if exists */}
+                    {error && <p className="mt-4 text-red-500">{error}</p>}
                 </form>
             </div>
         </div>
