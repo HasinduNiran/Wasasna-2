@@ -17,6 +17,10 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import Box from "@mui/material/Box";
+import { init, send } from "emailjs-com";
+import { PDFDocument, rgb } from "pdf-lib";
+import { pdf } from "@react-pdf/renderer";
+import EstimatePDFDocument from "./EstimatePDFDocument";
 
 const RepairEstimate = () => {
   const [err, setErr] = useState([]);
@@ -79,8 +83,11 @@ const RepairEstimate = () => {
     shortDescription: "",
   });
   const [descriptionWordCount, setDescriptionWordCount] = useState(100);
+  const [uploadProgress2, setUploadProgress2] = useState(0);
+  const [pdfUrl, setPdfUrl] = useState(null);
 
   const storage = getStorage(app);
+  init("jm1C0XkEa3KYwvYK0");
 
   const handleUpload = () => {
     const storage = getStorage();
@@ -377,6 +384,97 @@ const RepairEstimate = () => {
         icon: "error",
       });
       console.error("Error storing data to the database:", error);
+    }
+  };
+
+  const handleEmailSent = async () => {
+    try {
+      // Confirm sending the email
+      const result = await Swal.fire({
+        title: "Are you sure?",
+        text: "You will send this estimate report",
+        icon: "warning",
+        fontFamily: "Montserrat, sans-serif",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes, send it!",
+      });
+
+      if (result.isConfirmed) {
+        // Generate and upload the PDF, and send the email afterwards
+        await generateAndUploadPDF();
+      }
+    } catch (error) {
+      console.error("Error sending report:", error);
+      Swal.fire(
+        "Error",
+        "An error occurred while sending the report.",
+        "error"
+      );
+    }
+  };
+
+  const sendEmail = async (downloadURL) => {
+    const templateParams = {
+      to_email: insurance.agentEmail,
+      vehicle_registration_number: vehicle.Register_Number,
+      repair_estimate_date: "2024/05/02", // Modify this dynamically if needed
+      pdf_link: downloadURL,
+    };
+
+    try {
+      await send(
+        "service_fjpvjh9",
+        "template_atolrdf",
+        templateParams,
+        "jm1C0XkEa3KYwvYK0"
+      );
+    } catch (error) {
+      console.error("Error sending email:", error);
+    }
+  };
+
+  const generateAndUploadPDF = async () => {
+    const repairEstimate = {
+      ...vehicle,
+      ...customer,
+      ...insurance,
+    };
+    try {
+      const pdfBlob = await pdf(
+        <EstimatePDFDocument
+          repairEstimate={repairEstimate}
+          estimateList={estimateList}
+        />
+      ).toBlob();
+
+      const storageRef = ref(storage, `customer_images/${Date.now()}.pdf`);
+      const uploadTask = uploadBytesResumable(storageRef, pdfBlob);
+
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          // Track progress (optional)
+          const progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress2(progress);
+        },
+        (error) => {
+          console.error("Error uploading PDF:", error);
+        },
+        async () => {
+          // Step 4: Get the download URL after the upload completes
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setPdfUrl(downloadURL);
+          console.log("File available at", downloadURL);
+
+          await sendEmail(downloadURL);
+          Swal.fire("Success!", "The report has been sent.", "success");
+        }
+      );
+    } catch (error) {
+      console.error("Error generating or uploading PDF:", error);
     }
   };
 
@@ -1170,6 +1268,14 @@ const RepairEstimate = () => {
                   className="bg-violet-500 text-black text-xl px-4 py-2 rounded-md mt-5 mb-10 mr-10"
                 >
                   Save To Database
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleEmailSent}
+                  className="bg-violet-500 text-black text-xl px-4 py-2 rounded-md mt-5 mb-10 mr-10"
+                >
+                  Send To Agent
                 </button>
               </div>
             </div>
