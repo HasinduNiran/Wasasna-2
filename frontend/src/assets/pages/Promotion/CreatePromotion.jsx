@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import emailjs from "emailjs-com";
 import BackButton from "../../components/BackButton";
 import img1 from '../../images/bg02.jpg';
-import Navbar from '../Navbar/Navbar'
-import Footer from '../footer/Footer'
+import Navbar from '../Navbar/Navbar';
+import Footer from '../footer/Footer';
+
 const CreatePromotion = () => {
   const [promotion, setPromotion] = useState({
     title: "",
@@ -13,13 +16,14 @@ const CreatePromotion = () => {
     includes: [],
     startDate: "",
     endDate: "",
-    Percentage: 0, // Ensure to include the percentage in the promotion object
+    Percentage: 0,
   });
   const [services, setServices] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [percentage, setPercentage] = useState(0); // Main percentage field
+  const [percentage, setPercentage] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [customers, setCustomers] = useState([]); // Added customer state
   const navigate = useNavigate();
 
   // Fetch services from API
@@ -34,6 +38,16 @@ const CreatePromotion = () => {
         console.error('Error fetching services:', error);
         setLoading(false);
       });
+
+    // Fetch customers from API
+    axios.get('http://localhost:8077/customer')
+      .then((response) => {
+        setCustomers(response.data);
+        console.log(response.data) // Store fetched customers
+      })
+      .catch((error) => {
+        console.error('Error fetching customers:', error);
+      });
   }, []);
 
   const handleChange = (e) => {
@@ -44,7 +58,6 @@ const CreatePromotion = () => {
     }));
   };
 
-  // Select or deselect services and calculate discount
   const handleServiceSelect = (serviceName, servicePrice) => {
     let updatedSelectedServices = [];
 
@@ -56,43 +69,116 @@ const CreatePromotion = () => {
 
     setSelectedServices(updatedSelectedServices);
 
-    // Calculate the total price of selected services
     const totalPrice = updatedSelectedServices.reduce((sum, service) => sum + service.price, 0);
-    setTotalAmount(totalPrice); // Store total amount before discount
+    setTotalAmount(totalPrice);
 
-    // Calculate discount based on total price and percentage
     const discountedPrice = totalPrice - (totalPrice * (percentage / 100));
 
-    // Auto-fill the discount field with the discounted price
     setPromotion((prevPromotion) => ({
       ...prevPromotion,
-      discount: discountedPrice.toFixed(2), // Limit to 2 decimal places
+      discount: discountedPrice.toFixed(2),
     }));
   };
 
-  // Handle percentage change and recalculate discount
   const handlePercentageChange = (e) => {
     const value = parseFloat(e.target.value) || 0;
     setPercentage(value);
 
-    // Recalculate discount based on the new percentage
     const discountedPrice = totalAmount - (totalAmount * (value / 100));
     setPromotion((prevPromotion) => ({
       ...prevPromotion,
-      Percentage: value, // Save the percentage to the promotion object
+      Percentage: value,
       discount: discountedPrice.toFixed(2),
     }));
+  };
+
+
+
+  const sendPromotionEmail = (promotion) => {
+
+    const emailConfig = {
+      serviceID: "service_3p901v6",
+      templateID: "template_cwl7ahv",
+      userID: "-r5ctVwHjzozvGIfg",
+    };
+
+    customers.forEach((customer) => {
+      console.log(`Sending email to ${customer.email}...`);
+      emailjs
+        .send(
+          emailConfig.serviceID,
+          emailConfig.templateID,
+          {
+            to_email: `${customer.email}`,
+            subject: `New Promotion: ${promotion.title}`,
+            message: `
+              Hello ${customer.firstName},
+              
+              We are excited to announce a new promotion:
+              - Promotion Title: ${promotion.title}
+              - Percentage: ${promotion.Percentage}% off
+              - Description: ${promotion.description}
+              - Valid Until: ${promotion.endDate}
+              
+              Don't miss out! Take advantage of this offer before it expires.
+
+              Best regards,
+              Wasana Service centere
+            `,
+          },
+          emailConfig.userID
+        )
+        .then(() => {
+          console.log(`Email sent successfully to ${customer.email}`);
+        })
+        .catch((error) => {
+          console.error(`Error sending email to ${customer.email}:`, error);
+        });
+    });
+
+    Swal.fire({
+      position: "center",
+      icon: "success",
+      title: "Promotion emails sent to all customers!",
+      showConfirmButton: true,
+      timer: 2000,
+    });
+  };
+
+  const handleSendPromotionEmails = (promotion) => {
+    Swal.fire({
+      title: "Send Promotion Emails?",
+      text: "Do you want to send this promotion to all customers?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, send it",
+      cancelButtonText: "No, skip",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        sendPromotionEmail(promotion);
+      }
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:8077/Promotion', { 
-        ...promotion, 
+      await axios.post('http://localhost:8077/Promotion', {
+        ...promotion,
         includes: selectedServices.map(s => s.name),
-        Percentage: percentage // Ensure the percentage is included in the request
+        Percentage: percentage
       });
-      alert("Promotion created successfully!");
+
+      Swal.fire({
+        title: "Success!",
+        text: "Promotion added successfully.",
+        icon: "success",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          handleSendPromotionEmails(promotion);
+        }
+      });
+
       setPromotion({
         title: "",
         description: "",
@@ -108,7 +194,11 @@ const CreatePromotion = () => {
       navigate('/Promotion');
     } catch (error) {
       console.error("There was an error creating the promotion!", error);
-      alert("Failed to create promotion. Please try again.");
+      Swal.fire({
+        title: "Error",
+        text: "Failed to create promotion. Please try again.",
+        icon: "error",
+      });
     }
   };
 
@@ -126,7 +216,7 @@ const CreatePromotion = () => {
       marginLeft: "-80%",
       position: "absolute",
     },
-  
+
     form: {
       borderRadius: "30px",
       backgroundColor: "#1a1a1a",
@@ -134,7 +224,7 @@ const CreatePromotion = () => {
       maxWidth: "450px",
       padding: "20px",
       height: "auto",
-   
+
     },
     title: {
       color: "#6c1c1d",
@@ -186,111 +276,119 @@ const CreatePromotion = () => {
   };
 
   return (
-    <div className=""><Navbar/>
-    <div style={styles.container}>
-      <div style={styles.backButton}>
-        <BackButton destination="/promotion" />
-      </div>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <h2 style={styles.title}>Create Promotion</h2>
-        <input
-          type="text"
-          placeholder="Title"
-          name="title"
-          value={promotion.title}
-          onChange={handleChange}
-          required
-          style={styles.input}
-        />
-        <input
-          type="text"
-          placeholder="Description"
-          name="description"
-          value={promotion.description}
-          onChange={handleChange}
-          required
-          style={styles.input}
-        />
+    <div className=""><Navbar />
+      <div style={styles.container}>
+        <div style={styles.backButton}>
+          <BackButton destination="/promotion" />
+        </div>
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <h2 style={styles.title}>Create Promotion</h2>
+          <input
+            type="text"
+            placeholder="Title"
+            name="title"
+            value={promotion.title}
+            onChange={handleChange}
+            required
+            style={styles.input}
+          />
+          <input
+            type="text"
+            placeholder="Description"
+            name="description"
+            value={promotion.description}
+            onChange={handleChange}
+            required
+            style={styles.input}
+          />
 
-        {/* Includes Service Selection */}
-        <div style={styles.flex}>
-          <label>Includes:</label>
-          <div>
-            {services.map(service => (
-              <button
-                key={service._id}
-                type="button"
-                style={{
-                  ...styles.includeButton,
-                  backgroundColor: selectedServices.some(s => s.name === service.Servicename) ? 'red' : 'gray',
-                  color: selectedServices.some(s => s.name === service.Servicename) ? 'white' : 'black',
-                }}
-                onClick={() => handleServiceSelect(service.Servicename, service.Price)}
-              >
-                {service.Servicename} (${service.Price})
-              </button>
-            ))}
+          {/* Includes Service Selection */}
+          <div style={styles.flex}>
+            <label>Includes:</label>
+            <div>
+              {services.map(service => (
+                <button
+                  key={service._id}
+                  type="button"
+                  style={{
+                    ...styles.includeButton,
+                    backgroundColor: selectedServices.some(s => s.name === service.Servicename) ? 'red' : 'gray',
+                    color: selectedServices.some(s => s.name === service.Servicename) ? 'white' : 'black',
+                  }}
+                  onClick={() => handleServiceSelect(service.Servicename, service.Price)}
+                >
+                  {service.Servicename} (${service.Price})
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div style={styles.flex}>
-          <input
-            type="date"
-            name="startDate"
-            value={promotion.startDate}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-          <input
-            type="date"
-            name="endDate"
-            value={promotion.endDate}
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-        </div>
+          <div style={styles.flex}>
+            <input
+              type="date"
+              name="startDate"
+              value={promotion.startDate.slice(0, 10)} // Convert to YYYY-MM-DD format
+              onChange={handleChange}
+              required
+              style={styles.input}
+              min={new Date().toISOString().split("T")[0]} // Set the min attribute to today
+            />
+            <input
+              type="date"
+              name="endDate"
+              value={promotion.endDate.slice(0, 10)} // Convert to YYYY-MM-DD format
+              onChange={handleChange}
+              required
+              style={styles.input}
+              // Set the min value of endDate to be one day after startDate or today + 1 day
+              min={promotion.startDate
+                ? new Date(new Date(promotion.startDate).setDate(new Date(promotion.startDate).getDate() + 1))
+                  .toISOString().split("T")[0]
+                : new Date(new Date().setDate(new Date().getDate() + 1))
+                  .toISOString().split("T")[0]}
+            />
+          </div>
 
-        <div style={styles.flex}>
-        <label>Percentage:</label>
-        <input
-          type="number"
-          placeholder="Percentage Discount"
-          value={percentage}
-          onChange={handlePercentageChange}
-          style={styles.input}
-        />
 
-       
-        <input
-          type="number"
-          placeholder="Discount"
-          name="discount"
-          value={promotion.discount}
-          onChange={handleChange}
-          required
-          style={styles.input}
-          readOnly 
-        />
-        </div>
-        <button
-          type="submit"
-          style={styles.submitButton}
-          onMouseEnter={(e) =>
+          <div style={styles.flex}>
+            <label>Percentage:</label>
+            <input
+              type="number"
+              placeholder="Percentage Discount"
+              value={percentage}
+              onChange={handlePercentageChange}
+              style={styles.input}
+            />
+
+
+            <input
+              type="number"
+              placeholder="Discount"
+              name="discount"
+              value={promotion.discount}
+              onChange={handleChange}
+              required
+              style={styles.input}
+              readOnly
+            />
+          </div>
+          <button
+            type="submit"
+            style={styles.submitButton}
+            onMouseEnter={(e) =>
             (e.currentTarget.style.backgroundColor =
               styles.submitButtonHover.backgroundColor)
-          }
-          onMouseLeave={(e) =>
+            }
+            onMouseLeave={(e) =>
             (e.currentTarget.style.backgroundColor =
               styles.submitButton.backgroundColor)
-          }
-        >
-          Submit
-        </button>
-      </form>
-    </div>
-    <Footer/>
+            }
+          >
+            Submit
+          </button>
+        </form>
+      </div>
+      <Footer />
     </div>
   );
 };

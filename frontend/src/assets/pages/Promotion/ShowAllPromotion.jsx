@@ -293,7 +293,7 @@ const ShowAllPromotion = () => {
                             <tr>
                                 <th className="px-4 py-2 border">Title</th>
                                 <th className="px-4 py-2 border">Description</th>
-                                <th className="px-4 py-2 border">Discount (%)</th>
+                                <th className="px-4 py-2 border">Discount Price</th>
                                 <th className="px-4 py-2 border">Start Date</th>
                                 <th className="px-4 py-2 border">End Date</th>
                                 <th className="px-4 py-2 border">Actions</th>
