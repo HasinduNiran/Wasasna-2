@@ -68,7 +68,9 @@ const Home = () => {
     axios
       .get("http://localhost:8077/feedback")
       .then((response) => {
-        setFilteredFeedbacks(response.data);
+        // Filter only the feedbacks with status "approved"
+        const approvedFeedbacks = response.data.filter(feedback => feedback.status === 'approved');
+        setFilteredFeedbacks(approvedFeedbacks);
         setLoading(false);
       })
       .catch((error) => {
@@ -76,7 +78,7 @@ const Home = () => {
         setError("Error fetching feedbacks.");
         setLoading(false);
       });
-  }, []);
+}, []);
 
   const settings = {
     dots: true,

@@ -8,14 +8,14 @@ const router = express.Router();
 
 // Create a new feedback
 router.post('/', async (req, res) => {
-    const { cusID, name, email, phone_number, employee, message, star_rating } = req.body;
+    const { cusID, name, email, phone_number, employee, message, star_rating,status } = req.body;
 
     if (!name || !email || !phone_number || !employee || !message || star_rating === undefined) {
         return res.status(400).json({ message: 'All fields are required' });
     }
 
     try {
-        const feedback = new Feedback({ cusID, name, email, phone_number, employee, message, star_rating });
+        const feedback = new Feedback({ cusID, name, email, phone_number, employee, message, star_rating,status });
         await feedback.save();
         res.status(201).json(feedback);
     } catch (error) {
@@ -88,6 +88,39 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+
+
+router.put('/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params; // Feedback ID from the URL parameters
+        const { status } = req.body; // New status from the request body
+
+        // Validate the status field
+        const validStatuses = ['pending', 'approved', 'declined'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ message: 'Invalid status value. Allowed values: pending, approved, declined.' });
+        }
+
+        // Find and update the feedback's status
+        const updatedFeedback = await Feedback.findByIdAndUpdate(
+            id,
+            { status }, // Update only the status field
+            { new: true } // Return the updated document
+        );
+
+        if (!updatedFeedback) {
+            return res.status(404).json({ message: 'Feedback not found' });
+        }
+
+        return res.status(200).json({
+            message: `Feedback status updated to ${status}`,
+            feedback: updatedFeedback
+        });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
 
 // Delete a feedback entry
 router.delete('/:id', async (req, res) => {

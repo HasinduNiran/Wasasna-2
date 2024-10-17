@@ -30,6 +30,11 @@ const feedbackSchema = new Schema({
         type: Number,
         required: true,
     },
+    status: {
+        type: String,
+        enum: ['pending', 'approved', 'declined'],
+        default: 'pending'
+    },
 }, { timestamps: true });
 
 // Exporting the Feedback Model

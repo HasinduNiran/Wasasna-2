@@ -6,14 +6,16 @@ import BackButton from "../../components/BackButton";
 import img1 from '../../images/bg02.jpg';
 import Navbar from '../Navbar/Navbar';
 import Footer from '../footer/Footer';
+import emailjs from "emailjs-com";
 
 const CreateEmployeeSalary = () => {
   const [EmpID, setEmpID] = useState('');
-  const [employeeName, setemployeeName] = useState('');
-  const [fromDate, setfromDate] = useState('');
-  const [toDate, settoDate] = useState('');
-  const [totalOThours, settotalOThours] = useState('');
-  const [totalOTpay, settotalOTpay] = useState('');
+  const [employeeName, setEmployeeName] = useState('');
+  const [Email, setEmail] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [totalOThours, setTotalOThours] = useState('');
+  const [totalOTpay, setTotalOTpay] = useState('');
   const [BasicSalary, setBasicSalary] = useState('');
   const [TotalSalary, setTotalSalary] = useState('');
   const [employees, setEmployees] = useState([]);
@@ -56,12 +58,13 @@ const CreateEmployeeSalary = () => {
 
     const selectedEmp = employees.find((emp) => emp.EmpID === selectedEmpID);
     if (selectedEmp) {
-      setemployeeName(selectedEmp.employeeName);
+      setEmployeeName(selectedEmp.employeeName);
+      setEmail(selectedEmp.Email);
       setBasicSalary(selectedEmp.BasicSalary);
     }
   };
 
-  // calculate total OT hours based on date range
+  // Calculate total OT hours based on date range
   const calculateTotalOvertimeHours = () => {
     const filteredAttendance = employeesAttendance.filter(
       (attendance) =>
@@ -75,13 +78,13 @@ const CreateEmployeeSalary = () => {
       0
     );
 
-    settotalOThours(totalOvertimeHours);
+    setTotalOThours(totalOvertimeHours);
   };
 
   // Calculate OT pay
   const calculatedTotalOTpay = () => {
     const calculatedOTpay = totalOThours * 585;
-    settotalOTpay(calculatedOTpay);
+    setTotalOTpay(calculatedOTpay);
   };
 
   // Calculate total salary with optional EPF deduction
@@ -94,7 +97,56 @@ const CreateEmployeeSalary = () => {
     setTotalSalary(totalSalary);
   };
 
-  // Validations and form submission
+  const sendSalaryEmail = (sal) => {
+    const emailConfig = {
+      serviceID: "service_3p901v6",
+      templateID: "template_cwl7ahv",
+      userID: "-r5ctVwHjzozvGIfg",
+    };
+
+    emailjs.send(
+      emailConfig.serviceID,
+      emailConfig.templateID,
+      {
+        to_email:Email,
+        subject: `Salary Details for ${employeeName}`,
+        message: `
+          Dear ${employeeName},
+        Here is your salary summary for the period from ${fromDate} to ${toDate}:
+
+    Salary Summary:
+        Basic Salary: ${BasicSalary}
+        Overtime Hours: ${totalOThours}
+        Overtime Pay: ${totalOTpay}
+        Total Salary: ${TotalSalary}
+
+          Best regards,
+          Wasana service Centre
+        `,
+      },
+      emailConfig.userID
+    )
+      .then(() => {
+        Swal.fire({
+          position: "center",
+          icon: "success",
+          title: "Email sent successfully!",
+          showConfirmButton: true,
+          timer: 2000,
+        });
+      })
+      .catch((error) => {
+        console.error("Error sending email:", error);
+        Swal.fire({
+          position: "center",
+          icon: "error",
+          title: "Error sending email!",
+          showConfirmButton: true,
+          timer: 2000,
+        });
+      });
+  };
+
   const handleSaveEmployeeSalary = (e) => {
     e.preventDefault();
 
@@ -136,7 +188,24 @@ const CreateEmployeeSalary = () => {
       .post('http://localhost:8077/EmployeeSalary', data)
       .then(() => {
         setLoading(false);
-        navigate('/EmployeeSalary');
+
+        // After successful salary creation, show SweetAlert asking to send email
+        Swal.fire({
+          title: 'Salary created successfully!',
+          text: "Would you like to send the salary details to the employee?",
+          icon: 'success',
+          html: ` Employee Email: ${Email}<br><br>
+          Send Email to Employee?`,
+          showCancelButton: true,
+          confirmButtonText: 'Yes, send email',
+          cancelButtonText: 'No, later',
+        }).then((result) => {
+          if (result.isConfirmed) {
+            sendSalaryEmail(data);
+          } else {
+            navigate('/EmployeeSalary');
+          }
+        });
       })
       .catch((error) => {
         setLoading(false);
@@ -146,78 +215,78 @@ const CreateEmployeeSalary = () => {
 
   const styles = {
     container: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        padding: "20px",
-        fontFamily: '"Noto Sans", sans-serif',
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: "100vh",
+      padding: "20px",
+      fontFamily: '"Noto Sans", sans-serif',
     },
     backButton: {
-        marginBottom: "50%",
-        marginLeft: "-80%",
-        position: "absolute",
+      marginBottom: "50%",
+      marginLeft: "-80%",
+      position: "absolute",
     },
     image: {
-        borderRadius: "30px",
-        maxWidth: "240px",
-        padding: "0px",
-        height: "810px",
-        borderTopRightRadius: "0px",
-        borderBottomRightRadius: "0px",
+      borderRadius: "30px",
+      maxWidth: "240px",
+      padding: "0px",
+      height: "810px",
+      borderTopRightRadius: "0px",
+      borderBottomRightRadius: "0px",
     },
     form: {
-        borderRadius: "30px",
-        backgroundColor: "#1a1a1a",
-        color: "#fff",
-        maxWidth: "450px",
-        padding: "20px",
-        height: "auto",
-        borderTopLeftRadius: "0px",
-        borderBottomLeftRadius: "0px",
+      borderRadius: "30px",
+      backgroundColor: "#1a1a1a",
+      color: "#fff",
+      maxWidth: "450px",
+      padding: "20px",
+      height: "auto",
+      borderTopLeftRadius: "0px",
+      borderBottomLeftRadius: "0px",
     },
     title: {
-        color: "#6c1c1d",
-        fontSize: "30px",
-        fontWeight: "600",
-        paddingLeft: "30px",
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
+      color: "#6c1c1d",
+      fontSize: "30px",
+      fontWeight: "600",
+      paddingLeft: "30px",
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
     },
     input: {
-        backgroundColor: "#333",
-        color: "#fff",
-        border: "1px solid rgba(105, 105, 105, 0.397)",
-        borderRadius: "10px",
-        fontSize: "1rem",
-        padding: "15px 8px",
-        outline: "0",
-        width: "100%",
-        marginTop: "20px",
-        marginBottom: "20px",
+      backgroundColor: "#333",
+      color: "#fff",
+      border: "1px solid rgba(105, 105, 105, 0.397)",
+      borderRadius: "10px",
+      fontSize: "1rem",
+      padding: "15px 8px",
+      outline: "0",
+      width: "100%",
+      marginTop: "20px",
+      marginBottom: "20px",
     },
     flex: {
-        display: "flex",
-        gap: "8px",
-        marginTop: "15px",
+      display: "flex",
+      gap: "8px",
+      marginTop: "15px",
     },
     submitButton: {
-        border: "none",
-        backgroundColor: "#6c1c1d",
-        marginTop: "10px",
-        outline: "none",
-        padding: "10px",
-        borderRadius: "10px",
-        color: "#fff",
-        fontSize: "16px",
-        width: "100%",
-        cursor: "pointer",
+      border: "none",
+      backgroundColor: "#6c1c1d",
+      marginTop: "10px",
+      outline: "none",
+      padding: "10px",
+      borderRadius: "10px",
+      color: "#fff",
+      fontSize: "16px",
+      width: "100%",
+      cursor: "pointer",
     },
     submitButtonHover: {
-        backgroundColor: "#661003f5",
+      backgroundColor: "#661003f5",
     },
-};
+  };
 
   return (
     <div>
@@ -251,15 +320,25 @@ const CreateEmployeeSalary = () => {
           </div>
           <div style={styles.flex}>
             <input
+              type="text"
+              placeholder="Email"
+              value={Email}
+              readOnly
+              style={styles.input}
+              hidden
+            />
+          </div>
+          <div style={styles.flex}>
+            <input
               type="date"
               value={fromDate}
-              onChange={(e) => setfromDate(e.target.value)}
+              onChange={(e) => setFromDate(e.target.value)}
               style={styles.input}
             />
             <input
               type="date"
               value={toDate}
-              onChange={(e) => settoDate(e.target.value)}
+              onChange={(e) => setToDate(e.target.value)}
               style={styles.input}
             />
           </div>
