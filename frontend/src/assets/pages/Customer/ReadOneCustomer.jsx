@@ -93,13 +93,15 @@ const ReadOneCustomer = () => {
         const tableData = serviceHistory.map((service, index) => [
             index + 1,
             new Date(service.Service_Date).toLocaleDateString(),
-            service.Service_Details,
+            service.Vehicle_Number,
+            service.Service_History,
             service.Allocated_Employee,
-            service.Customer_Name
+            service.Milage,
+            service.nextService
         ]);
 
         doc.autoTable({
-            head: [["No", "Service Date", "Service Details", "Allocated Employee", "Customer Name"]],
+            head: [["No", "Service Date", "Vehicle_Number", "Service Details", "Allocated Employee", "Milage ", "nextService "]],
             body: tableData,
             startY: 30,
             margin: { horizontal: 10 },
@@ -131,7 +133,7 @@ const ReadOneCustomer = () => {
                                         Edit
                                     </Link>
                                     <Link to={`/customer/Delete/${customer._id}`} className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded">
-                                       Delete
+                                        Delete
                                     </Link>
                                 </div>
 
@@ -288,18 +290,23 @@ const ReadOneCustomer = () => {
                                                         <dd className="text-sm font-medium">
                                                             {new Date(service.Service_Date).toLocaleDateString() || 'N/A'}
                                                         </dd>
-                                                    </div>
+                                                    </div> 
                                                     <div>
+                                                        <dt className="text-gray-500 text-sm">Vehicle_Number</dt>
+                                                        <dd className="text-sm font-medium">{service.Vehicle_Number || 'N/A'}</dd>
+                                                    </div>
+                                                     <div>
                                                         <dt className="text-gray-500 text-sm">Service Details</dt>
                                                         <dd className="text-sm font-medium">{service.Service_History || 'N/A'}</dd>
                                                     </div>
+                                                    
                                                     <div>
                                                         <dt className="text-gray-500 text-sm">Service Employee</dt>
                                                         <dd className="text-sm font-medium">{service.Allocated_Employee || 'N/A'}</dd>
                                                     </div>
                                                     <div>
-                                                        <dt className="text-gray-500 text-sm">Service Customer</dt>
-                                                        <dd className="text-sm font-medium">{service.Customer_Name || 'N/A'}</dd>
+                                                        <dt className="text-gray-500 text-sm">Service Milage</dt>
+                                                        <dd className="text-sm font-medium">{service.Milage || 'N/A'}</dd>
                                                     </div>
                                                 </dl>
                                             </div>
