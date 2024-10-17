@@ -8,7 +8,7 @@ import Footer from '../footer/Footer'
 const EditPromotion = () => {
   const { id } = useParams(); // Get the promotion ID from the URL
   const navigate = useNavigate();
-  
+
   const [promotion, setPromotion] = useState({
     title: "",
     description: "",
@@ -18,7 +18,7 @@ const EditPromotion = () => {
     endDate: "",
     Percentage: 0, // Percentage discount field
   });
-  
+
   const [services, setServices] = useState([]);  // All available services
   const [selectedServices, setSelectedServices] = useState([]);  // Services selected in the form
   const [totalAmount, setTotalAmount] = useState(0);  // Total price of selected services
@@ -125,7 +125,7 @@ const EditPromotion = () => {
       marginLeft: "-80%",
       position: "absolute",
     },
-   
+
     form: {
       borderRadius: "30px",
       backgroundColor: "#1a1a1a",
@@ -133,7 +133,7 @@ const EditPromotion = () => {
       maxWidth: "450px",
       padding: "20px",
       height: "auto",
-     
+
     },
     title: {
       color: "#6c1c1d",
@@ -185,111 +185,119 @@ const EditPromotion = () => {
   };
 
   return (
-    <div className=""><Navbar/>
-    <div style={styles.container}>
-      <div style={styles.backButton}>
-        <BackButton destination="/promotion" />
-      </div>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <h2 style={styles.title}>Edit Promotion</h2>
-        <input
-          type="text"
-          placeholder="Title"
-          name="title"
-          value={promotion.title}
-          onChange={handleChange}
-          required
-          style={styles.input}
-        />
-        <input
-          type="text"
-          placeholder="Description"
-          name="description"
-          value={promotion.description}
-          onChange={handleChange}
-          required
-          style={styles.input}
-        />
+    <div className=""><Navbar />
+      <div style={styles.container}>
+        <div style={styles.backButton}>
+          <BackButton destination="/promotion" />
+        </div>
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <h2 style={styles.title}>Edit Promotion</h2>
+          <input
+            type="text"
+            placeholder="Title"
+            name="title"
+            value={promotion.title}
+            onChange={handleChange}
+            required
+            style={styles.input}
+          />
+          <input
+            type="text"
+            placeholder="Description"
+            name="description"
+            value={promotion.description}
+            onChange={handleChange}
+            required
+            style={styles.input}
+          />
 
-        {/* Includes Service Selection */}
-        <div style={styles.flex}>
-          <label>Includes:</label>
-          <div>
-            {services.map(service => (
-              <button
-                key={service._id}
-                type="button"
-                style={{
-                  ...styles.includeButton,
-                  backgroundColor: selectedServices.some(s => s.name === service.Servicename) ? 'blue' : 'gray',
-                  color: selectedServices.some(s => s.name === service.Servicename) ? 'white' : 'black',
-                }}
-                onClick={() => handleServiceSelect(service.Servicename, service.Price)}
-              >
-                {service.Servicename} (${service.Price})
-              </button>
-            ))}
+          {/* Includes Service Selection */}
+          <div style={styles.flex}>
+            <label>Includes:</label>
+            <div>
+              {services.map(service => (
+                <button
+                  key={service._id}
+                  type="button"
+                  style={{
+                    ...styles.includeButton,
+                    backgroundColor: selectedServices.some(s => s.name === service.Servicename) ? 'blue' : 'gray',
+                    color: selectedServices.some(s => s.name === service.Servicename) ? 'white' : 'black',
+                  }}
+                  onClick={() => handleServiceSelect(service.Servicename, service.Price)}
+                >
+                  {service.Servicename} (${service.Price})
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div style={styles.flex}>
+          <div style={styles.flex}>
+            <input
+              type="date"
+              name="startDate"
+              value={promotion.startDate.slice(0, 10)} // Convert to YYYY-MM-DD format
+              onChange={handleChange}
+              required
+              style={styles.input}
+              min={new Date().toISOString().split("T")[0]} // Set the min attribute to today
+            />
+            <input
+              type="date"
+              name="endDate"
+              value={promotion.endDate.slice(0, 10)} // Convert to YYYY-MM-DD format
+              onChange={handleChange}
+              required
+              style={styles.input}
+              // Set the min value of endDate to be one day after startDate or today + 1 day
+              min={promotion.startDate
+                ? new Date(new Date(promotion.startDate).setDate(new Date(promotion.startDate).getDate() + 1))
+                  .toISOString().split("T")[0]
+                : new Date(new Date().setDate(new Date().getDate() + 1))
+                  .toISOString().split("T")[0]}
+            />
+          </div>
+
+
+          {/* Percentage Input */}
+          <label>Percentage:</label>
           <input
-            type="date"
-            name="startDate"
-            value={promotion.startDate.slice(0, 10)} // Convert to YYYY-MM-DD format
+            type="number"
+            placeholder="Percentage Discount"
+            value={percentage}
+            onChange={handlePercentageChange}
+            style={styles.input}
+          />
+
+          {/* Discount Field */}
+          <input
+            type="number"
+            placeholder="Discount"
+            name="discount"
+            value={promotion.discount}
             onChange={handleChange}
             required
             style={styles.input}
+            readOnly // Auto-calculated field
           />
-          <input
-            type="date"
-            name="endDate"
-            value={promotion.endDate.slice(0, 10)} // Convert to YYYY-MM-DD format
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-        </div>
 
-        {/* Percentage Input */}
-        <label>Percentage:</label>
-        <input
-          type="number"
-          placeholder="Percentage Discount"
-          value={percentage}
-          onChange={handlePercentageChange}
-          style={styles.input}
-        />
-
-        {/* Discount Field */}
-        <input
-          type="number"
-          placeholder="Discount"
-          name="discount"
-          value={promotion.discount}
-          onChange={handleChange}
-          required
-          style={styles.input}
-          readOnly // Auto-calculated field
-        />
-
-        <button
-          type="submit"
-          style={styles.submitButton}
-          onMouseEnter={(e) =>
+          <button
+            type="submit"
+            style={styles.submitButton}
+            onMouseEnter={(e) =>
             (e.currentTarget.style.backgroundColor =
               styles.submitButtonHover.backgroundColor)
-          }
-          onMouseLeave={(e) =>
+            }
+            onMouseLeave={(e) =>
             (e.currentTarget.style.backgroundColor =
               styles.submitButton.backgroundColor)
-          }
-        >
-          Submit
-        </button>
-      </form>
-    </div>
-    <Footer/>
+            }
+          >
+            Submit
+          </button>
+        </form>
+      </div>
+      <Footer />
     </div>
   );
 };
