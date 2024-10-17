@@ -142,6 +142,14 @@ const Store = () => {
                   {product.Name}
                 </Typography>
                 <Typography
+                  gutterBottom
+                  variant="h5"
+                  component="div"
+                  style={{ fontWeight: "600" }}
+                >
+                  {product.email}
+                </Typography>
+                <Typography
                   variant="body2"
                   color="text.secondary"
                   style={{ fontFamily: "'Open Sans', sans-serif" }} // Use different font for description
