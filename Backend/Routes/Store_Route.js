@@ -62,6 +62,9 @@ router.put('/:id', getStore, async (req, res) => {
     if (req.body.Description) {
       res.store.Description = req.body.Description;
     }
+    if (req.body.email) {
+      res.store.email = req.body.email;
+    }
     
     // Update photoURL only if it exists in the request body, otherwise retain the old one
     if (req.body.photoURL) {

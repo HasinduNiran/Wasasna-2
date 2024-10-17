@@ -9,6 +9,7 @@ import Swal from "sweetalert2";
 import CountUp from "react-countup";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import emailjs from "emailjs-com";
 import logo from "../../images/logo.png";
 
 const ShowStore = () => {
@@ -55,13 +56,13 @@ const ShowStore = () => {
     axios
       .get("http://localhost:8077/Store")
       .then((response) => {
-        console.log("API Response:", response.data);
         const data = response.data;
         if (Array.isArray(data)) {
           setStore(data);
-          setFilteredStore(data); // Initialize filtered data
+          setFilteredStore(data);
+          const lowQuantityItems = data.filter((item) => item.Quantity < 20);
+          lowQuantityItems.forEach((item) => checkLowStock(item));
         } else {
-          console.warn("Data is not an array:", data);
           setStore([]);
           setFilteredStore([]);
         }
@@ -75,6 +76,50 @@ const ShowStore = () => {
       });
   }, []);
 
+  // Function to send an email alert for low stock items
+  const sendLowStockEmail = (item) => {
+    const emailConfig = {
+      serviceID: "service_p1zv9rh",
+      templateID: "template_pua7ayd",
+      userID: "v53cNBlrti0pL_RxD",
+    };
+
+    emailjs
+      .send(
+        emailConfig.serviceID,
+        emailConfig.templateID,
+        {
+          to_email: item.email,
+          message: `Dear Supplier,\n\nThe stock for the item "${item.Name}" is currently low (Quantity: ${item.Quantity}). Please consider restocking.\n\nThank you,\nWasana Auto Service`,
+        },
+        emailConfig.userID
+      )
+      .then(
+        () => Swal.fire("Email Sent!", `Supplier for ${item.Name} has been notified.`, "success"),
+        (error) => console.error("Failed to send email:", error)
+      );
+  };
+
+  // Check if item stock is low and prompt to send an email
+  const checkLowStock = (item) => {
+    if (item.Quantity < 20) {
+      Swal.fire({
+        title: "Low Stock Alert!",
+        text: `The stock for ${item.Name} is below 20 units.\nEmail: ${item.email}`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Send Email",
+        cancelButtonText: "Cancel",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          sendLowStockEmail(item);
+        }
+      });
+    }
+  };
+
+
+
   const handleSearch = (event) => {
     const query = event.target.value.toLowerCase();
     setSearchQuery(query);
@@ -82,7 +127,8 @@ const ShowStore = () => {
       (item) =>
         item.Name.toLowerCase().includes(query) ||
         item.Quantity.toString().includes(query) ||
-        item.Price.toString().includes(query)
+        item.Price.toString().includes(query) ||
+        item.email.toString().includes(query)
     );
     setFilteredStore(filtered);
   };
@@ -96,11 +142,12 @@ const ShowStore = () => {
     const date = new Date().toLocaleDateString(); // Current date for the report
 
     // Define table columns for store items
-    const tableColumn = ["Name", "Quantity", "Price"];
+    const tableColumn = ["Name", "Email",  "Quantity", "Price"];
 
     // Map store data to table rows
     const tableRows = filteredStore.map(item => [
         item.Name,
+        item.email,
         item.Quantity,
         item.Price
     ]);
@@ -277,6 +324,9 @@ const ShowStore = () => {
                     Name
                   </th>
                   <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Quantity
                   </th>
                   <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -300,6 +350,9 @@ const ShowStore = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {item.Name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {item.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {item.Quantity}

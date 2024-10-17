@@ -20,6 +20,10 @@ const storeSchema = mongoose.Schema({
   photoURL: {
     type: String,
   },
+  email: {
+    type: String,
+    required: true,
+  },
 });
 
 // Exporting the Store Model

@@ -18,6 +18,7 @@ const CreateStore = () => {
   const [Quantity, setQuantity] = useState("");
   const [Price, setPrice] = useState("");
   const [Description, setDescription] = useState("");
+  const [email, setemail] = useState("");
   const [photo, setPhoto] = useState(null);
   const [photoURL, setPhotoURL] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -73,7 +74,7 @@ const CreateStore = () => {
       return; // Prevent form submission if Description is empty
     }
   
-    const data = { Name, Quantity, Price, Description, photoURL };
+    const data = { Name,email, Quantity, Price, Description, photoURL };
     setLoading(true);
   
     try {
@@ -177,6 +178,14 @@ const CreateStore = () => {
             placeholder="Name"
             value={Name}
             onChange={(e) => setName(e.target.value)}
+            required
+            style={styles.input}
+          />
+          <input
+            type="email"
+            placeholder="Supplier's Email Address"
+            value={email}
+            onChange={(e) => setemail(e.target.value)}
             required
             style={styles.input}
           />
