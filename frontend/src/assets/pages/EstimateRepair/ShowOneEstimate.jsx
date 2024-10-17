@@ -11,6 +11,16 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import Box from "@mui/material/Box";
+import Swal from "sweetalert2";
+import { init, send } from "emailjs-com";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
+import { app } from "../../../firebase";
+import { pdf } from "@react-pdf/renderer";
 
 const ShowOneEstimate = () => {
   const navigation = useNavigate();
@@ -19,6 +29,11 @@ const ShowOneEstimate = () => {
   const [estimateList, setEstimateList] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [uploadProgress2, setUploadProgress2] = useState(0);
+  const [pdfUrl, setPdfUrl] = useState(null);
+
+  const storage = getStorage(app);
+  init("jm1C0XkEa3KYwvYK0");
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -44,6 +59,92 @@ const ShowOneEstimate = () => {
 
   const handleBackClick = () => {
     navigation(-1);
+  };
+
+  const handleEmailSent = async () => {
+    try {
+      // Confirm sending the email
+      const result = await Swal.fire({
+        title: "Are you sure?",
+        text: "You will send this estimate report",
+        icon: "warning",
+        fontFamily: "Montserrat, sans-serif",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes, send it!",
+      });
+
+      if (result.isConfirmed) {
+        // Generate and upload the PDF, and send the email afterwards
+        await generateAndUploadPDF();
+      }
+    } catch (error) {
+      console.error("Error sending report:", error);
+      Swal.fire(
+        "Error",
+        "An error occurred while sending the report.",
+        "error"
+      );
+    }
+  };
+
+  const generateAndUploadPDF = async () => {
+    try {
+      const pdfBlob = await pdf(
+        <EstimatePDFDocument
+          repairEstimate={repairEstimate}
+          estimateList={estimateList}
+        />
+      ).toBlob();
+
+      const storageRef = ref(storage, `customer_images/${Date.now()}.pdf`);
+      const uploadTask = uploadBytesResumable(storageRef, pdfBlob);
+
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          // Track progress
+          const progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress2(progress);
+        },
+        (error) => {
+          console.error("Error uploading PDF:", error);
+        },
+        async () => {
+          // Get the download URL after upload completes
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setPdfUrl(downloadURL);
+
+          // After successful PDF upload, send the email
+          await sendEmail(downloadURL);
+          Swal.fire("Success!", "The report has been sent.", "success");
+        }
+      );
+    } catch (error) {
+      console.error("Error generating or uploading PDF:", error);
+    }
+  };
+
+  const sendEmail = async (downloadURL) => {
+    const templateParams = {
+      to_email: repairEstimate.agentEmail,
+      vehicle_registration_number: repairEstimate.Register_Number,
+      repair_estimate_date: "2024/05/02", // Modify this dynamically if needed
+      pdf_link: downloadURL,
+    };
+
+    try {
+      await send(
+        "service_fjpvjh9",
+        "template_atolrdf",
+        templateParams,
+        "jm1C0XkEa3KYwvYK0"
+      );
+    } catch (error) {
+      console.error("Error sending email:", error);
+    }
   };
   return (
     <div className={`flex ${darkMode ? "bg-gray-900 " : "bg-white "}`}>
@@ -74,6 +175,13 @@ const ShowOneEstimate = () => {
               >
                 {({ loading }) => (loading ? "Loading PDF..." : "Download PDF")}
               </PDFDownloadLink>
+              <button
+                type="button"
+                onClick={handleEmailSent}
+                className="bg-violet-500  text-black text-xl px-4 py-2 rounded-md mt-10 mb-10 ml-5 mr-10"
+              >
+                Send To Agent
+              </button>
             </div>
 
             <div className="flex items-center space-x-4 mr-64">
