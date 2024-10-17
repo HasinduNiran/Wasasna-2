@@ -42,6 +42,24 @@ const ShowFeedback = () => {
             });
     }, []);
 
+    const handleStatusChange = async (id, newStatus) => {
+        try {
+            await axios.put(`http://localhost:8077/feedback/${id}/status`, { status: newStatus });
+
+            // Update the feedback list in the state
+            setFeedbacks(feedbacks.map((feedback) =>
+                feedback._id === id ? { ...feedback, status: newStatus } : feedback
+            ));
+
+            // Update the filtered feedback list if necessary
+            setFilteredFeedbacks(filteredFeedbacks.map((feedback) =>
+                feedback._id === id ? { ...feedback, status: newStatus } : feedback
+            ));
+        } catch (error) {
+            console.error("Error updating status", error);
+        }
+    };
+
     const handleSearch = (event) => {
         const query = event.target.value.toLowerCase();
         setSearchQuery(query);
@@ -54,6 +72,7 @@ const ShowFeedback = () => {
                 feedback.phone_number.toLowerCase().includes(query) ||
                 feedback.employee.toLowerCase().includes(query) ||
                 feedback.message.toLowerCase().includes(query) ||
+                feedback.status.toLowerCase().includes(query) ||
                 String(feedback.star_rating).toLowerCase().includes(query)
             );
         });
@@ -106,7 +125,7 @@ const ShowFeedback = () => {
         doc.text("Wasana Auto Service, Colombo 4", 30, 45);
 
         doc.text(
-            "--------------------------------------------------------------------------------------------------",
+            "---------------------------------------------------------------------------------------------------------------------------------------------",
             0,
             50
         );
@@ -137,7 +156,7 @@ const ShowFeedback = () => {
                     </div>
                     <nav className="flex-1 overflow-y-auto">
                         <ul className="mt-2">
-                            
+
                             <li className="text-gray-400 hover:bg-gray-700 hover:text-white p-3">
                                 <Link to="/feedback">Feedback</Link>
                             </li>
@@ -199,6 +218,7 @@ const ShowFeedback = () => {
                                 <th className="p-3">Employee</th>
                                 <th className="p-3">Message</th>
                                 <th className="p-3">Star Rating</th>
+                                <th className="py-2 px-4">Status</th>
                                 <th className="p-3">Actions</th>
                             </tr>
                         </thead>
@@ -213,6 +233,18 @@ const ShowFeedback = () => {
                                     <td className="p-3 border-b">{feedback.message}</td>
                                     <td className="p-3 border-b">
                                         <CountUp start={0} end={feedback.star_rating} duration={1} />
+                                    </td>
+                                    <td className="p-3 border-b">
+                                        <select
+                                            value={feedback.status}
+                                            onChange={(e) => handleStatusChange(feedback._id, e.target.value)}
+                                            className={darkMode ? 'bg-gray-600 text-white' : 'bg-white text-black'}
+                                        >
+                                            <option value="pending">Pending</option>
+                                            <option value="approved">approved</option>
+                                            <option value="declined">declined</option>
+                                        </select>
+
                                     </td>
                                     <td className="p-3 border-b flex justify-around items-center">
                                         {/* <Link to={`/feedback/edit/${feedback._id}`} className="text-blue-500"><AiOutlineEdit /></Link> */}
